@@ -371,7 +371,7 @@ const recentDiscoveries = Object.entries(venuesByDate)
           loading.style.display = 'block';
           
           try {
-            const response = await fetch('/api/discover-venues', {
+            const response = await fetch('/.netlify/functions/discover-venues', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ city, maxResults })
@@ -393,7 +393,7 @@ const recentDiscoveries = Object.entries(venuesByDate)
         // Define other functions in global scope
         window.updateVenueStatus = async function(name, location, status) {
           try {
-            const response = await fetch('/api/update-venue-status', {
+            const response = await fetch('/.netlify/functions/update-venue-status', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name, location, status })
@@ -416,7 +416,7 @@ const recentDiscoveries = Object.entries(venuesByDate)
           }
           
           try {
-            const response = await fetch('/api/add-approved-venues', {
+            const response = await fetch('/.netlify/functions/add-approved-venues', {
               method: 'POST'
             });
             

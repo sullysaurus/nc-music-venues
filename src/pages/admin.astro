@@ -281,7 +281,7 @@ try {
           btn.textContent = 'Running...';
           
           try {
-            const response = await fetch('/api/run-scraper', { method: 'POST' });
+            const response = await fetch('/.netlify/functions/run-scraper', { method: 'POST' });
             const result = await response.text();
             alert(result || 'Scraper started successfully');
           } catch (error) {

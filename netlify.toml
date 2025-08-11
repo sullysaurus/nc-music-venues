@@ -1,28 +1,28 @@
 [build]
-  command = "npm run build"
   publish = "dist"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+  command = "npm run build"
 
 [functions]
   directory = "netlify/functions"
 
-# Environment variables for production
+# Function-specific settings
+[[functions]]
+  name = "discover-venues"
+  timeout = 300  # 5 minutes for venue discovery
+
+[[functions]]
+  name = "run-scraper"  
+  timeout = 300  # 5 minutes for scraping
+
+[[functions]]
+  name = "update-venue-status"
+  timeout = 30   # 30 seconds should be enough
+
+[[functions]]
+  name = "add-approved-venues"
+  timeout = 60   # 1 minute for CSV operations
+
+# Environment variables for Puppeteer
 [build.environment]
-  NODE_VERSION = "18"
-
-# Cache node_modules for faster builds
-[build.processing]
-  skip_processing = false
-
-# Headers for security
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
+  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
+  PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
