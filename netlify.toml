@@ -5,24 +5,14 @@
 [functions]
   directory = "netlify/functions"
 
-# Function-specific settings
-[[functions]]
-  name = "discover-venues"
-  timeout = 300  # 5 minutes for venue discovery
+[functions."discover-venues"]
+  timeout = 300
 
-[[functions]]
-  name = "run-scraper"  
-  timeout = 300  # 5 minutes for scraping
+[functions."run-scraper"]  
+  timeout = 300
 
-[[functions]]
-  name = "update-venue-status"
-  timeout = 30   # 30 seconds should be enough
+[functions."update-venue-status"]
+  timeout = 30
 
-[[functions]]
-  name = "add-approved-venues"
-  timeout = 60   # 1 minute for CSV operations
-
-# Environment variables for Puppeteer
-[build.environment]
-  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
-  PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
+[functions."add-approved-venues"]
+  timeout = 60
