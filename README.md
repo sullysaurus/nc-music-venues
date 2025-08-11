@@ -1,3 +1,3 @@
-# Music Venues Directory
+# North Music Venues Directory
 
-A modern, searchable directory of music venues built with Astro and automated contact information scraping.
+Find venues, book shows, have fun.
