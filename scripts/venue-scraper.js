@@ -258,12 +258,109 @@ function extractGenres(content, url) {
   return limitedGenres.join('; ');
 }
 
+// Extract contact name from website content
+function extractContactName(content, url) {
+  const namePatterns = [
+    // Contact/booking manager patterns
+    /(?:contact|booking|manager|coordinator|director)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+    /(?:contact|booking)[:\s]*(?:person|manager|coordinator|director)[:\s]*[:\-\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+    
+    // Email signature patterns (name before email)
+    /([A-Z][a-z]+\s+[A-Z][a-z]+)[\s\r\n]*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+    
+    // Phone signature patterns (name before phone)
+    /([A-Z][a-z]+\s+[A-Z][a-z]+)[\s\r\n]*\(?[\d\s\-\.\(\)]{10,}/g,
+    
+    // General contact info patterns
+    /(?:for\s+(?:booking|info|contact))[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+    /(?:reach\s+out\s+to|contact)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+    
+    // Owner/proprietor patterns
+    /(?:owner|proprietor|founder)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+    
+    // "Call/Email Name" patterns
+    /(?:call|email|text)[:\s]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+    
+    // Staff listings
+    /(?:staff|team|management)[:\s\r\n]*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi
+  ];
+  
+  const foundNames = new Set();
+  
+  // Common words to exclude from names
+  const excludeWords = [
+    'Contact Us', 'About Us', 'Follow Us', 'Join Us', 'Book Now', 'Learn More',
+    'Get Directions', 'Call Now', 'Email Us', 'Visit Us', 'Find Us', 'See All',
+    'Read More', 'View All', 'Book Here', 'Click Here', 'More Info', 'Full Menu',
+    'Live Music', 'Private Events', 'Special Events', 'Happy Hour', 'Open Mic',
+    'Karaoke Night', 'Trivia Night', 'Food Menu', 'Drink Menu', 'Wine List',
+    'Beer Selection', 'Event Space', 'Private Room', 'Gift Cards', 'Loyalty Program',
+    'Terms Conditions', 'Privacy Policy', 'Cookie Policy', 'Site Map', 'Home Page',
+    'Main Menu', 'Side Menu', 'Top Menu', 'Footer Menu', 'Header Menu',
+    'Social Media', 'Follow Social', 'New York', 'Los Angeles', 'San Francisco',
+    'United States', 'North America', 'South America', 'East Coast', 'West Coast'
+  ];
+  
+  for (const pattern of namePatterns) {
+    const matches = content.match(pattern);
+    if (matches) {
+      matches.forEach(match => {
+        // Extract the name part from the match
+        const nameMatch = match.match(/([A-Z][a-z]+\s+[A-Z][a-z]+)/);
+        if (nameMatch) {
+          const name = nameMatch[1].trim();
+          
+          // Basic validation
+          if (name.length > 3 && name.length < 40) {
+            const words = name.split(' ');
+            
+            // Check if it's likely a real name (not common phrases)
+            const isExcluded = excludeWords.some(excluded => 
+              excluded.toLowerCase() === name.toLowerCase()
+            );
+            
+            // Additional validation: both words should be proper nouns
+            const isValidName = words.length === 2 && 
+              words.every(word => /^[A-Z][a-z]+$/.test(word)) &&
+              !isExcluded;
+            
+            if (isValidName) {
+              foundNames.add(name);
+            }
+          }
+        }
+      });
+    }
+  }
+  
+  // If we found names, return the first one (they're usually the most relevant)
+  const names = Array.from(foundNames);
+  if (names.length > 0) {
+    // Prefer names that appear in context with "contact" or "booking"
+    const contextualNames = names.filter(name => {
+      const nameIndex = content.toLowerCase().indexOf(name.toLowerCase());
+      if (nameIndex === -1) return false;
+      
+      const surroundingText = content.substring(
+        Math.max(0, nameIndex - 50), 
+        Math.min(content.length, nameIndex + name.length + 50)
+      ).toLowerCase();
+      
+      return /contact|booking|manager|coordinator|director|owner/.test(surroundingText);
+    });
+    
+    return contextualNames.length > 0 ? contextualNames[0] : names[0];
+  }
+  
+  return null;
+}
+
 // Scrape venue information from website
 async function scrapeVenueInfo(venue, browser) {
   if (!venue.website) return null;
   
   // Skip if venue already has all info
-  if (venue.contact_email && venue.contact_phone && venue.capacity && venue.typical_genres) return null;
+  if (venue.contact_email && venue.contact_phone && venue.capacity && venue.typical_genres && venue.contact_name) return null;
   
   let page;
   let retries = 0;
@@ -298,24 +395,26 @@ async function scrapeVenueInfo(venue, browser) {
       const text = await page.evaluate(() => document.body.innerText || '');
       const fullContent = content + ' ' + text;
       
-      // Extract email, phone, capacity, and genres
+      // Extract email, phone, capacity, genres, and contact name
       const email = !venue.contact_email ? extractEmail(fullContent, venue.website) : null;
       const phone = !venue.contact_phone ? extractPhone(fullContent, venue.website) : null;
       const capacity = !venue.capacity ? extractCapacity(fullContent, venue.website) : null;
       const genres = !venue.typical_genres ? extractGenres(fullContent, venue.website) : null;
+      const contactName = !venue.contact_name ? extractContactName(fullContent, venue.website) : null;
       
-      if (email || phone || capacity || genres) {
+      if (email || phone || capacity || genres || contactName) {
         const found = [];
         if (email) found.push(`email: ${email}`);
         if (phone) found.push(`phone: ${phone}`);
         if (capacity) found.push(`capacity: ${capacity}`);
         if (genres) found.push(`genres: ${genres}`);
+        if (contactName) found.push(`contact: ${contactName}`);
         log(`Found for ${venue.name}: ${found.join(', ')}`);
-        return { email, phone, capacity, genres };
+        return { email, phone, capacity, genres, contactName };
       }
       
       // Try contact page if available (only if we're still missing some info)
-      if (!email || !phone || !capacity || !genres) {
+      if (!email || !phone || !capacity || !genres || !contactName) {
         const contactLinks = await page.$$eval('a', links => 
           links.filter(link => 
             /contact|booking|about|info/i.test(link.textContent) ||
@@ -334,19 +433,22 @@ async function scrapeVenueInfo(venue, browser) {
             const contactPhone = !phone && !venue.contact_phone ? extractPhone(contactFullContent, contactUrl) : null;
             const contactCapacity = !capacity && !venue.capacity ? extractCapacity(contactFullContent, contactUrl) : null;
             const contactGenres = !genres && !venue.typical_genres ? extractGenres(contactFullContent, contactUrl) : null;
+            const contactContactName = !contactName && !venue.contact_name ? extractContactName(contactFullContent, contactUrl) : null;
             
-            if (contactEmail || contactPhone || contactCapacity || contactGenres) {
+            if (contactEmail || contactPhone || contactCapacity || contactGenres || contactContactName) {
               const found = [];
               if (contactEmail) found.push(`email: ${contactEmail}`);
               if (contactPhone) found.push(`phone: ${contactPhone}`);
               if (contactCapacity) found.push(`capacity: ${contactCapacity}`);
               if (contactGenres) found.push(`genres: ${contactGenres}`);
+              if (contactContactName) found.push(`contact: ${contactContactName}`);
               log(`Found on contact page for ${venue.name}: ${found.join(', ')}`);
               return { 
                 email: email || contactEmail, 
                 phone: phone || contactPhone,
                 capacity: capacity || contactCapacity,
-                genres: genres || contactGenres
+                genres: genres || contactGenres,
+                contactName: contactName || contactContactName
               };
             }
           } catch (error) {
@@ -356,8 +458,8 @@ async function scrapeVenueInfo(venue, browser) {
       }
       
       // Return what we found (if anything)
-      if (email || phone || capacity || genres) {
-        return { email, phone, capacity, genres };
+      if (email || phone || capacity || genres || contactName) {
+        return { email, phone, capacity, genres, contactName };
       }
       
       return null;
@@ -392,14 +494,14 @@ async function scrapeMissingInfo() {
   log('Starting venue information scraping...');
   
   const venues = loadVenues();
-  const venuesNeedingInfo = venues.filter(v => v.website && (!v.contact_email || !v.contact_phone || !v.capacity || !v.typical_genres));
+  const venuesNeedingInfo = venues.filter(v => v.website && (!v.contact_email || !v.contact_phone || !v.capacity || !v.typical_genres || !v.contact_name));
   
   if (venuesNeedingInfo.length === 0) {
     log('No venues missing information found');
     return;
   }
   
-  log(`Found ${venuesNeedingInfo.length} venues missing information (email, phone, capacity, or genres)`);
+  log(`Found ${venuesNeedingInfo.length} venues missing information (email, phone, capacity, genres, or contact name)`);
   
   let browser;
   try {
@@ -454,6 +556,11 @@ async function scrapeMissingInfo() {
             
             if (result.genres && !venue.typical_genres) {
               venue.typical_genres = result.genres;
+              updated = true;
+            }
+            
+            if (result.contactName && !venue.contact_name) {
+              venue.contact_name = result.contactName;
               updated = true;
             }
             

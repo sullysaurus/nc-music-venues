@@ -31,7 +31,8 @@ const columnsToKeep = [
   'venue_type',
   'capacity',
   'contact_email',
-  'contact_phone', 
+  'contact_phone',
+  'contact_name',
   'website',
   'typical_genres'
 ];

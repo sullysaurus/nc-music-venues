@@ -10,6 +10,7 @@ export interface Venue {
   capacity: number | null;
   contact_email: string;
   contact_phone: string;
+  contact_name: string;
   website: string;
   typical_genres: string;
 }

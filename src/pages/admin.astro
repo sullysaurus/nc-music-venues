@@ -11,6 +11,7 @@ const venuesWithEmail = venues.filter(v => v.contact_email && v.contact_email.tr
 const venuesWithPhone = venues.filter(v => v.contact_phone && v.contact_phone.trim()).length;
 const venuesWithCapacity = venues.filter(v => v.capacity && v.capacity.toString().trim()).length;
 const venuesWithGenres = venues.filter(v => v.typical_genres && v.typical_genres.trim()).length;
+const venuesWithContactName = venues.filter(v => v.contact_name && v.contact_name.trim()).length;
 
 const venuesWithWebsite = venues.filter(v => v.website && v.website.trim()).length;
 const venuesWithoutWebsite = venues.filter(v => !v.website || !v.website.trim()).length;
@@ -20,11 +21,12 @@ const emailPercentage = (venuesWithEmail / totalVenues * 100).toFixed(1);
 const phonePercentage = (venuesWithPhone / totalVenues * 100).toFixed(1);
 const capacityPercentage = (venuesWithCapacity / totalVenues * 100).toFixed(1);
 const genrePercentage = (venuesWithGenres / totalVenues * 100).toFixed(1);
+const contactNamePercentage = (venuesWithContactName / totalVenues * 100).toFixed(1);
 
 // Calculate venues needing scraping (have website but missing any info)
 const venuesNeedingScraping = venues.filter(v => 
   v.website && v.website.trim() && 
-  (!v.contact_email || !v.contact_phone || !v.capacity || !v.typical_genres)
+  (!v.contact_email || !v.contact_phone || !v.capacity || !v.typical_genres || !v.contact_name)
 ).length;
 
 // Read scraper log if it exists
@@ -163,7 +165,7 @@ try {
     <div class="container">
       <div class="header">
         <h1>Venue Directory Admin</h1>
-        <p>Monitor comprehensive venue data scraping: emails, phone numbers, capacity, and music genres</p>
+        <p>Monitor comprehensive venue data scraping: emails, phone numbers, capacity, music genres, and contact names</p>
       </div>
       
       <div class="stats-grid">
@@ -205,6 +207,12 @@ try {
           <div class="stat-label">With Genres</div>
           <div style="font-size: 0.875rem; color: #10b981; margin-top: 0.25rem;">{genrePercentage}%</div>
         </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{venuesWithContactName}</div>
+          <div class="stat-label">With Contact Name</div>
+          <div style="font-size: 0.875rem; color: #10b981; margin-top: 0.25rem;">{contactNamePercentage}%</div>
+        </div>
       </div>
       
       <div class="log-section">
@@ -241,10 +249,18 @@ try {
           </div>
           <p>{genrePercentage}% complete ({venuesWithGenres}/{totalVenues})</p>
         </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <h3 style="margin-bottom: 0.5rem; color: #3b82f6;">Contact Names</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" style={`width: ${contactNamePercentage}%`}></div>
+          </div>
+          <p>{contactNamePercentage}% complete ({venuesWithContactName}/{totalVenues})</p>
+        </div>
       </div>
       
       <div class="actions">
-        <button class="btn btn-primary" onclick="runScraper()">Run Complete Scraper</button>
+        <button class="btn btn-primary" onclick="runScraper(event)">Run Complete Scraper</button>
         <a href="/" class="btn btn-secondary">Back to Directory</a>
       </div>
       
@@ -255,7 +271,7 @@ try {
     </div>
     
     <script>
-      async function runScraper() {
+      async function runScraper(event) {
         const btn = event.target;
         btn.disabled = true;
         btn.textContent = 'Running...';
