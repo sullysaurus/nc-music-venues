@@ -1,0 +1,432 @@
+---
+import { loadDiscoveredVenues, getPendingVenues } from '../../lib/discovered-venues';
+
+const allDiscoveredVenues = loadDiscoveredVenues();
+const pendingVenues = getPendingVenues();
+const totalDiscovered = allDiscoveredVenues.length;
+const approvedCount = allDiscoveredVenues.filter(v => v.status === 'approved').length;
+const rejectedCount = allDiscoveredVenues.filter(v => v.status === 'rejected').length;
+
+// Group by discovery date for stats
+const venuesByDate = allDiscoveredVenues.reduce((acc, venue) => {
+  const date = venue.discovery_date;
+  acc[date] = (acc[date] || 0) + 1;
+  return acc;
+}, {});
+
+const recentDiscoveries = Object.entries(venuesByDate)
+  .sort(([a], [b]) => b.localeCompare(a))
+  .slice(0, 7);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Venue Discovery Admin</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f8fafc;
+        padding: 2rem;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      
+      .header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      
+      .nav {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+      }
+      
+      .nav a {
+        padding: 0.5rem 1rem;
+        background: #6b7280;
+        color: white;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        font-weight: 500;
+      }
+      
+      .nav a:hover {
+        background: #4b5563;
+      }
+      
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+      }
+      
+      .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #3b82f6;
+      }
+      
+      .stat-label {
+        color: #6b7280;
+        margin-top: 0.5rem;
+      }
+      
+      .discovery-form {
+        background: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+      }
+      
+      .form-row {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 1rem;
+      }
+      
+      .form-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .form-group label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      
+      .form-group input {
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+      }
+      
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+      }
+      
+      .btn-primary {
+        background: #3b82f6;
+        color: white;
+      }
+      
+      .btn-success {
+        background: #10b981;
+        color: white;
+      }
+      
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+      
+      .btn-small {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+      }
+      
+      .venues-section {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+      
+      .section-header {
+        background: #f9fafb;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .venues-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      
+      .venues-table th,
+      .venues-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .venues-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+      }
+      
+      .venues-table tr:hover {
+        background: #f9fafb;
+      }
+      
+      .venue-name {
+        font-weight: 600;
+        color: #1f2937;
+      }
+      
+      .venue-type {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+      
+      .discovery-source {
+        font-size: 0.875rem;
+        color: #6b7280;
+      }
+      
+      .actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .loading {
+        display: none;
+        color: #6b7280;
+        font-style: italic;
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Venue Discovery Admin</h1>
+        <p>Discover and review new music venues</p>
+      </div>
+      
+      <div class="nav">
+        <a href="/admin">Main Admin</a>
+        <a href="/admin/discovery">Discovery</a>
+        {approvedCount > 0 && (
+          <button class="btn btn-success" onclick="addApprovedVenues()" style="background: #10b981; color: white; border: none;">
+            Add {approvedCount} Approved Venues
+          </button>
+        )}
+        <a href="/">Back to Directory</a>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">{totalDiscovered}</div>
+          <div class="stat-label">Total Discovered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{pendingVenues.length}</div>
+          <div class="stat-label">Pending Review</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{approvedCount}</div>
+          <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{rejectedCount}</div>
+          <div class="stat-label">Rejected</div>
+        </div>
+      </div>
+      
+      <div class="discovery-form">
+        <h2 style="margin-bottom: 1rem;">Discover New Venues</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="city">City</label>
+            <input type="text" id="city" placeholder="e.g., Raleigh, NC" />
+          </div>
+          <div class="form-group">
+            <label for="maxResults">Max Results</label>
+            <input type="number" id="maxResults" value="25" min="5" max="100" />
+          </div>
+          <button class="btn btn-primary" onclick="discoverVenues()">
+            Discover Venues
+          </button>
+        </div>
+        <div class="loading" id="discoveryLoading">
+          Searching for venues... This may take a few minutes.
+        </div>
+      </div>
+      
+      {pendingVenues.length > 0 ? (
+        <div class="venues-section">
+          <div class="section-header">
+            <h2>Pending Venues ({pendingVenues.length})</h2>
+          </div>
+          <table class="venues-table">
+            <thead>
+              <tr>
+                <th>Venue</th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>Website</th>
+                <th>Discovery Source</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingVenues.map(venue => (
+                <tr>
+                  <td>
+                    <div class="venue-name">{venue.name}</div>
+                    {venue.address && <div style="font-size: 0.875rem; color: #6b7280;">{venue.address}</div>}
+                  </td>
+                  <td>{venue.location}</td>
+                  <td><span class="venue-type">{venue.venue_type}</span></td>
+                  <td>
+                    {venue.website && (
+                      <a href={venue.website} target="_blank" rel="noopener" style="color: #3b82f6;">
+                        Visit Site
+                      </a>
+                    )}
+                  </td>
+                  <td><div class="discovery-source">{venue.discovered_from}</div></td>
+                  <td>{venue.discovery_date}</td>
+                  <td>
+                    <div class="actions">
+                      <button 
+                        class="btn btn-success btn-small" 
+                        onclick="updateVenueStatus('{venue.name}', '{venue.location}', 'approved')"
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        class="btn btn-danger btn-small" 
+                        onclick="updateVenueStatus('{venue.name}', '{venue.location}', 'rejected')"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div class="venues-section">
+          <div class="empty-state">
+            <h3>No Pending Venues</h3>
+            <p>Use the discovery form above to find new venues in a city.</p>
+          </div>
+        </div>
+      )}
+    </div>
+    
+    <script>
+      async function discoverVenues() {
+        const city = document.getElementById('city').value.trim();
+        const maxResults = parseInt(document.getElementById('maxResults').value);
+        const loading = document.getElementById('discoveryLoading');
+        
+        if (!city) {
+          alert('Please enter a city name');
+          return;
+        }
+        
+        loading.style.display = 'block';
+        
+        try {
+          const response = await fetch('/api/discover-venues', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ city, maxResults })
+          });
+          
+          const result = await response.text();
+          alert(result);
+          
+          // Refresh page to show new discoveries
+          setTimeout(() => location.reload(), 2000);
+          
+        } catch (error) {
+          alert('Error discovering venues: ' + error.message);
+        } finally {
+          loading.style.display = 'none';
+        }
+      }
+      
+      async function updateVenueStatus(name, location, status) {
+        try {
+          const response = await fetch('/api/update-venue-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, location, status })
+          });
+          
+          if (response.ok) {
+            // Refresh page to update the list
+            location.reload();
+          } else {
+            alert('Error updating venue status');
+          }
+        } catch (error) {
+          alert('Error updating venue status: ' + error.message);
+        }
+      }
+      
+      async function addApprovedVenues() {
+        if (!confirm('Add all approved venues to the main directory? This cannot be undone easily.')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/add-approved-venues', {
+            method: 'POST'
+          });
+          
+          const result = await response.text();
+          alert(result);
+          
+          if (response.ok) {
+            // Refresh page to update counts
+            setTimeout(() => location.reload(), 1000);
+          }
+        } catch (error) {
+          alert('Error adding approved venues: ' + error.message);
+        }
+      }
+    </script>
+  </body>
+</html>
