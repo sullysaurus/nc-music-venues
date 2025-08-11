@@ -1,0 +1,339 @@
+---
+import { loadVenues, getUniqueLocations, getUniqueGenres, getUniqueVenueTypes } from '../lib/venues';
+
+const venues = loadVenues();
+const locations = getUniqueLocations(venues);
+const genres = getUniqueGenres(venues);
+const venueTypes = getUniqueVenueTypes(venues);
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Music Venues Directory</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			
+			body {
+				font-family: system-ui, -apple-system, sans-serif;
+				line-height: 1.6;
+				color: #333;
+				background: #f8fafc;
+			}
+			
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem 1rem;
+			}
+			
+			.header {
+				text-align: center;
+				margin-bottom: 3rem;
+			}
+			
+			.header h1 {
+				font-size: 3rem;
+				font-weight: 700;
+				color: #1a202c;
+				margin-bottom: 0.5rem;
+			}
+			
+			.header p {
+				font-size: 1.125rem;
+				color: #4a5568;
+			}
+			
+			.filters {
+				background: white;
+				padding: 2rem;
+				border-radius: 1rem;
+				box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+				margin-bottom: 2rem;
+			}
+			
+			.filters-grid {
+				display: grid;
+				grid-template-columns: 2fr 1fr 1fr 1fr;
+				gap: 1rem;
+				align-items: end;
+			}
+			
+			.filter-group {
+				display: flex;
+				flex-direction: column;
+			}
+			
+			.filter-group label {
+				font-weight: 600;
+				color: #374151;
+				margin-bottom: 0.5rem;
+				font-size: 0.875rem;
+			}
+			
+			.filter-group input,
+			.filter-group select {
+				padding: 0.75rem;
+				border: 2px solid #e5e7eb;
+				border-radius: 0.5rem;
+				font-size: 1rem;
+				background: white;
+				transition: border-color 0.2s;
+			}
+			
+			.filter-group input:focus,
+			.filter-group select:focus {
+				outline: none;
+				border-color: #3b82f6;
+			}
+			
+			.venues-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+				gap: 1.5rem;
+			}
+			
+			.venue-card {
+				background: white;
+				border-radius: 1rem;
+				padding: 1.5rem;
+				box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+				transition: transform 0.2s, box-shadow 0.2s;
+			}
+			
+			.venue-card:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+			}
+			
+			.venue-card h3 {
+				font-size: 1.25rem;
+				font-weight: 700;
+				color: #1a202c;
+				margin-bottom: 0.5rem;
+			}
+			
+			.venue-location {
+				font-weight: 600;
+				color: #3b82f6;
+				margin-bottom: 0.75rem;
+			}
+			
+			.venue-address {
+				color: #6b7280;
+				font-size: 0.875rem;
+				margin-bottom: 1rem;
+			}
+			
+			.venue-details {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				margin-bottom: 1rem;
+			}
+			
+			.venue-tag {
+				background: #f3f4f6;
+				color: #374151;
+				padding: 0.25rem 0.75rem;
+				border-radius: 0.5rem;
+				font-size: 0.875rem;
+				font-weight: 500;
+			}
+			
+			.venue-tag.type {
+				background: #dbeafe;
+				color: #1e40af;
+			}
+			
+			.venue-tag.capacity {
+				background: #fef3c7;
+				color: #92400e;
+			}
+			
+			.venue-genres {
+				color: #4b5563;
+				font-size: 0.875rem;
+				margin-bottom: 1rem;
+			}
+			
+			.venue-contact {
+				display: flex;
+				gap: 1rem;
+				align-items: center;
+			}
+			
+			.venue-contact a {
+				color: #3b82f6;
+				text-decoration: none;
+				font-weight: 500;
+				font-size: 0.875rem;
+			}
+			
+			.venue-contact a:hover {
+				text-decoration: underline;
+			}
+			
+			.no-results {
+				text-align: center;
+				color: #6b7280;
+				font-size: 1.125rem;
+				margin: 3rem 0;
+			}
+			
+			@media (max-width: 768px) {
+				.filters-grid {
+					grid-template-columns: 1fr;
+					gap: 1rem;
+				}
+				
+				.header h1 {
+					font-size: 2rem;
+				}
+				
+				.venues-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<header class="header">
+				<h1>Music Venues Directory</h1>
+				<p>Discover amazing music venues across North Carolina</p>
+			</header>
+			
+			<div class="filters">
+				<div class="filters-grid">
+					<div class="filter-group">
+						<label for="search">Search venues</label>
+						<input 
+							type="text" 
+							id="search" 
+							placeholder="Search by name, location, or genre..."
+						/>
+					</div>
+					<div class="filter-group">
+						<label for="location">Location</label>
+						<select id="location">
+							<option value="">All locations</option>
+							{locations.map(location => (
+								<option value={location}>{location}</option>
+							))}
+						</select>
+					</div>
+					<div class="filter-group">
+						<label for="genre">Genre</label>
+						<select id="genre">
+							<option value="">All genres</option>
+							{genres.map(genre => (
+								<option value={genre}>{genre}</option>
+							))}
+						</select>
+					</div>
+					<div class="filter-group">
+						<label for="type">Venue Type</label>
+						<select id="type">
+							<option value="">All types</option>
+							{venueTypes.map(type => (
+								<option value={type}>{type}</option>
+							))}
+						</select>
+					</div>
+				</div>
+			</div>
+			
+			<div class="venues-grid" id="venues-container">
+				{venues.map(venue => (
+					<div class="venue-card" data-name={venue.name} data-location={venue.location} data-genres={venue.typical_genres} data-type={venue.venue_type}>
+						<h3>{venue.name}</h3>
+						<div class="venue-location">{venue.location}</div>
+						{venue.address && <div class="venue-address">{venue.address}</div>}
+						
+						<div class="venue-details">
+							<span class="venue-tag type">{venue.venue_type}</span>
+							{venue.capacity && <span class="venue-tag capacity">Capacity: {venue.capacity}</span>}
+						</div>
+						
+						{venue.typical_genres && (
+							<div class="venue-genres">
+								<strong>Genres:</strong> {venue.typical_genres}
+							</div>
+						)}
+						
+						<div class="venue-contact">
+							{venue.website && (
+								<a href={venue.website} target="_blank" rel="noopener">Website</a>
+							)}
+							{venue.contact_phone && (
+								<a href={`tel:${venue.contact_phone}`}>{venue.contact_phone}</a>
+							)}
+							{venue.contact_email && (
+								<a href={`mailto:${venue.contact_email}`}>Email</a>
+							)}
+						</div>
+					</div>
+				))}
+			</div>
+			
+			<div id="no-results" class="no-results" style="display: none;">
+				No venues found matching your search criteria.
+			</div>
+		</div>
+		
+		<script>
+			const searchInput = document.getElementById('search');
+			const locationSelect = document.getElementById('location');
+			const genreSelect = document.getElementById('genre');
+			const typeSelect = document.getElementById('type');
+			const venuesContainer = document.getElementById('venues-container');
+			const noResults = document.getElementById('no-results');
+			const venueCards = document.querySelectorAll('.venue-card');
+			
+			function filterVenues() {
+				const searchTerm = searchInput.value.toLowerCase();
+				const selectedLocation = locationSelect.value;
+				const selectedGenre = genreSelect.value;
+				const selectedType = typeSelect.value;
+				
+				let visibleCount = 0;
+				
+				venueCards.forEach(card => {
+					const name = card.dataset.name.toLowerCase();
+					const location = card.dataset.location;
+					const genres = card.dataset.genres ? card.dataset.genres.toLowerCase() : '';
+					const type = card.dataset.type;
+					
+					const matchesSearch = !searchTerm || 
+						name.includes(searchTerm) || 
+						location.toLowerCase().includes(searchTerm) || 
+						genres.includes(searchTerm);
+					
+					const matchesLocation = !selectedLocation || location === selectedLocation;
+					const matchesGenre = !selectedGenre || genres.includes(selectedGenre.toLowerCase());
+					const matchesType = !selectedType || type === selectedType;
+					
+					const shouldShow = matchesSearch && matchesLocation && matchesGenre && matchesType;
+					
+					card.style.display = shouldShow ? 'block' : 'none';
+					if (shouldShow) visibleCount++;
+				});
+				
+				noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+			}
+			
+			searchInput.addEventListener('input', filterVenues);
+			locationSelect.addEventListener('change', filterVenues);
+			genreSelect.addEventListener('change', filterVenues);
+			typeSelect.addEventListener('change', filterVenues);
+		</script>
+	</body>
+</html>

@@ -1,0 +1,217 @@
+---
+import { loadVenues } from '../lib/venues';
+import fs from 'fs';
+import path from 'path';
+
+const venues = loadVenues();
+const totalVenues = venues.length;
+const venuesWithEmail = venues.filter(v => v.contact_email).length;
+const venuesWithoutEmail = venues.filter(v => !v.contact_email && v.website).length;
+const venuesWithoutWebsite = venues.filter(v => !v.website).length;
+
+// Read scraper log if it exists
+let scraperLog = '';
+const logPath = path.join(process.cwd(), 'logs/scraper.log');
+try {
+  if (fs.existsSync(logPath)) {
+    const logContent = fs.readFileSync(logPath, 'utf8');
+    scraperLog = logContent.split('\n').slice(-20).join('\n'); // Last 20 lines
+  }
+} catch (error) {
+  scraperLog = 'No log file found';
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Venue Directory Admin</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f8fafc;
+        padding: 2rem;
+      }
+      
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      
+      .header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+      }
+      
+      .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #3b82f6;
+      }
+      
+      .stat-label {
+        color: #6b7280;
+        margin-top: 0.5rem;
+      }
+      
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        background: #e5e7eb;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 1rem 0;
+      }
+      
+      .progress-fill {
+        height: 100%;
+        background: #10b981;
+        transition: width 0.3s ease;
+      }
+      
+      .log-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+      }
+      
+      .log-content {
+        background: #1f2937;
+        color: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.875rem;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      
+      .actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+      }
+      
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+      
+      .btn-primary {
+        background: #3b82f6;
+        color: white;
+      }
+      
+      .btn-secondary {
+        background: #6b7280;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Venue Directory Admin</h1>
+        <p>Monitor scraping progress and data quality</p>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">{totalVenues}</div>
+          <div class="stat-label">Total Venues</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{venuesWithEmail}</div>
+          <div class="stat-label">With Email</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{venuesWithoutEmail}</div>
+          <div class="stat-label">Missing Email</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{venuesWithoutWebsite}</div>
+          <div class="stat-label">No Website</div>
+        </div>
+      </div>
+      
+      <div class="log-section">
+        <h2>Email Completion Progress</h2>
+        <div class="progress-bar">
+          <div class="progress-fill" style={`width: ${(venuesWithEmail / totalVenues * 100).toFixed(1)}%`}></div>
+        </div>
+        <p>{(venuesWithEmail / totalVenues * 100).toFixed(1)}% complete ({venuesWithEmail}/{totalVenues})</p>
+      </div>
+      
+      <div class="actions">
+        <button class="btn btn-primary" onclick="runScraper()">Run Scraper Now</button>
+        <a href="/" class="btn btn-secondary">Back to Directory</a>
+      </div>
+      
+      <div class="log-section">
+        <h2>Recent Scraper Activity</h2>
+        <div class="log-content">{scraperLog || 'No recent activity'}</div>
+      </div>
+    </div>
+    
+    <script>
+      async function runScraper() {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+        
+        try {
+          const response = await fetch('/api/run-scraper', { method: 'POST' });
+          const result = await response.text();
+          alert(result || 'Scraper started successfully');
+        } catch (error) {
+          alert('Error starting scraper: ' + error.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Run Scraper Now';
+          
+          // Refresh page after 2 seconds
+          setTimeout(() => location.reload(), 2000);
+        }
+      }
+      
+      // Auto-refresh every 30 seconds
+      setTimeout(() => location.reload(), 30000);
+    </script>
+  </body>
+</html>
