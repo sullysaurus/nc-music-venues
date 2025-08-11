@@ -8,18 +8,10 @@ export interface Venue {
   address: string;
   venue_type: string;
   capacity: number | null;
-  contact_name: string;
   contact_email: string;
   contact_phone: string;
   website: string;
   typical_genres: string;
-  booking_fee_range: string;
-  notes: string;
-  is_verified: boolean;
-  added_count: number;
-  favorited_count: number;
-  created_date: string;
-  created_by: string;
 }
 
 export function loadVenues(): Venue[] {
@@ -32,12 +24,6 @@ export function loadVenues(): Venue[] {
     cast: (value, { column }) => {
       if (column === 'capacity') {
         return value === '' ? null : parseInt(value, 10);
-      }
-      if (column === 'is_verified') {
-        return value === 'TRUE';
-      }
-      if (column === 'added_count' || column === 'favorited_count') {
-        return parseInt(value, 10) || 0;
       }
       return value;
     }

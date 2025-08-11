@@ -5,9 +5,27 @@ import path from 'path';
 
 const venues = loadVenues();
 const totalVenues = venues.length;
-const venuesWithEmail = venues.filter(v => v.contact_email).length;
-const venuesWithoutEmail = venues.filter(v => !v.contact_email && v.website).length;
-const venuesWithoutWebsite = venues.filter(v => !v.website).length;
+
+// Calculate statistics for all scraped fields
+const venuesWithEmail = venues.filter(v => v.contact_email && v.contact_email.trim()).length;
+const venuesWithPhone = venues.filter(v => v.contact_phone && v.contact_phone.trim()).length;
+const venuesWithCapacity = venues.filter(v => v.capacity && v.capacity.toString().trim()).length;
+const venuesWithGenres = venues.filter(v => v.typical_genres && v.typical_genres.trim()).length;
+
+const venuesWithWebsite = venues.filter(v => v.website && v.website.trim()).length;
+const venuesWithoutWebsite = venues.filter(v => !v.website || !v.website.trim()).length;
+
+// Calculate completion percentages
+const emailPercentage = (venuesWithEmail / totalVenues * 100).toFixed(1);
+const phonePercentage = (venuesWithPhone / totalVenues * 100).toFixed(1);
+const capacityPercentage = (venuesWithCapacity / totalVenues * 100).toFixed(1);
+const genrePercentage = (venuesWithGenres / totalVenues * 100).toFixed(1);
+
+// Calculate venues needing scraping (have website but missing any info)
+const venuesNeedingScraping = venues.filter(v => 
+  v.website && v.website.trim() && 
+  (!v.contact_email || !v.contact_phone || !v.capacity || !v.typical_genres)
+).length;
 
 // Read scraper log if it exists
 let scraperLog = '';
@@ -54,7 +72,7 @@ try {
       
       .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem;
         margin-bottom: 2rem;
       }
@@ -145,7 +163,7 @@ try {
     <div class="container">
       <div class="header">
         <h1>Venue Directory Admin</h1>
-        <p>Monitor scraping progress and data quality</p>
+        <p>Monitor comprehensive venue data scraping: emails, phone numbers, capacity, and music genres</p>
       </div>
       
       <div class="stats-grid">
@@ -155,31 +173,78 @@ try {
         </div>
         
         <div class="stat-card">
+          <div class="stat-number">{venuesWithWebsite}</div>
+          <div class="stat-label">With Website</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{venuesNeedingScraping}</div>
+          <div class="stat-label">Need Scraping</div>
+        </div>
+        
+        <div class="stat-card">
           <div class="stat-number">{venuesWithEmail}</div>
           <div class="stat-label">With Email</div>
+          <div style="font-size: 0.875rem; color: #10b981; margin-top: 0.25rem;">{emailPercentage}%</div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-number">{venuesWithoutEmail}</div>
-          <div class="stat-label">Missing Email</div>
+          <div class="stat-number">{venuesWithPhone}</div>
+          <div class="stat-label">With Phone</div>
+          <div style="font-size: 0.875rem; color: #10b981; margin-top: 0.25rem;">{phonePercentage}%</div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-number">{venuesWithoutWebsite}</div>
-          <div class="stat-label">No Website</div>
+          <div class="stat-number">{venuesWithCapacity}</div>
+          <div class="stat-label">With Capacity</div>
+          <div style="font-size: 0.875rem; color: #10b981; margin-top: 0.25rem;">{capacityPercentage}%</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-number">{venuesWithGenres}</div>
+          <div class="stat-label">With Genres</div>
+          <div style="font-size: 0.875rem; color: #10b981; margin-top: 0.25rem;">{genrePercentage}%</div>
         </div>
       </div>
       
       <div class="log-section">
-        <h2>Email Completion Progress</h2>
-        <div class="progress-bar">
-          <div class="progress-fill" style={`width: ${(venuesWithEmail / totalVenues * 100).toFixed(1)}%`}></div>
+        <h2>Scraping Progress Overview</h2>
+        
+        <div style="margin-bottom: 1rem;">
+          <h3 style="margin-bottom: 0.5rem; color: #3b82f6;">Email Addresses</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" style={`width: ${emailPercentage}%`}></div>
+          </div>
+          <p>{emailPercentage}% complete ({venuesWithEmail}/{totalVenues})</p>
         </div>
-        <p>{(venuesWithEmail / totalVenues * 100).toFixed(1)}% complete ({venuesWithEmail}/{totalVenues})</p>
+        
+        <div style="margin-bottom: 1rem;">
+          <h3 style="margin-bottom: 0.5rem; color: #3b82f6;">Phone Numbers</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" style={`width: ${phonePercentage}%`}></div>
+          </div>
+          <p>{phonePercentage}% complete ({venuesWithPhone}/{totalVenues})</p>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <h3 style="margin-bottom: 0.5rem; color: #3b82f6;">Capacity Information</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" style={`width: ${capacityPercentage}%`}></div>
+          </div>
+          <p>{capacityPercentage}% complete ({venuesWithCapacity}/{totalVenues})</p>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <h3 style="margin-bottom: 0.5rem; color: #3b82f6;">Music Genres</h3>
+          <div class="progress-bar">
+            <div class="progress-fill" style={`width: ${genrePercentage}%`}></div>
+          </div>
+          <p>{genrePercentage}% complete ({venuesWithGenres}/{totalVenues})</p>
+        </div>
       </div>
       
       <div class="actions">
-        <button class="btn btn-primary" onclick="runScraper()">Run Scraper Now</button>
+        <button class="btn btn-primary" onclick="runScraper()">Run Complete Scraper</button>
         <a href="/" class="btn btn-secondary">Back to Directory</a>
       </div>
       
@@ -203,7 +268,7 @@ try {
           alert('Error starting scraper: ' + error.message);
         } finally {
           btn.disabled = false;
-          btn.textContent = 'Run Scraper Now';
+          btn.textContent = 'Run Complete Scraper';
           
           // Refresh page after 2 seconds
           setTimeout(() => location.reload(), 2000);
