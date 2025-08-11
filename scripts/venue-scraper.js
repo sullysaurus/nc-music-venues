@@ -88,59 +88,92 @@ async function scrapeVenueEmail(venue, browser) {
   if (!venue.website || venue.contact_email) return null;
   
   let page;
-  try {
-    page = await browser.newPage();
-    
-    // Set user agent and other headers
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
-    await page.setViewport({ width: 1280, height: 720 });
-    
-    // Navigate to website with timeout
-    await page.goto(venue.website, { 
-      waitUntil: 'networkidle0', 
-      timeout: 15000 
-    });
-    
-    // Get page content
-    const content = await page.content();
-    const text = await page.evaluate(() => document.body.innerText || '');
-    
-    // Extract email
-    const email = extractEmail(content + ' ' + text, venue.website);
-    
-    if (email) {
-      log(`Found email for ${venue.name}: ${email}`);
-      return email;
-    }
-    
-    // Try contact page if available
-    const contactLinks = await page.$$eval('a', links => 
-      links.filter(link => 
-        /contact|booking|about/i.test(link.textContent) ||
-        /contact|booking|about/i.test(link.href)
-      ).map(link => link.href)
-    );
-    
-    for (const contactUrl of contactLinks.slice(0, 2)) {
-      try {
-        await page.goto(contactUrl, { waitUntil: 'networkidle0', timeout: 10000 });
-        const contactContent = await page.content();
-        const contactText = await page.evaluate(() => document.body.innerText || '');
-        
-        const contactEmail = extractEmail(contactContent + ' ' + contactText, contactUrl);
-        if (contactEmail) {
-          log(`Found email on contact page for ${venue.name}: ${contactEmail}`);
-          return contactEmail;
+  let retries = 0;
+  const maxRetries = 2;
+  
+  while (retries <= maxRetries) {
+    try {
+      page = await browser.newPage();
+      
+      // Set user agent and other headers
+      await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
+      await page.setViewport({ width: 1280, height: 720 });
+      
+      // Disable images and CSS to speed up loading
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        if (req.resourceType() === 'stylesheet' || req.resourceType() === 'image') {
+          req.abort();
+        } else {
+          req.continue();
         }
-      } catch (error) {
-        // Ignore errors from contact pages
+      });
+      
+      // Navigate to website with shorter timeout and ignore SSL errors
+      await page.goto(venue.website, { 
+        waitUntil: 'domcontentloaded', 
+        timeout: 10000
+      });
+      
+      // Get page content
+      const content = await page.content();
+      const text = await page.evaluate(() => document.body.innerText || '');
+      
+      // Extract email
+      const email = extractEmail(content + ' ' + text, venue.website);
+      
+      if (email) {
+        log(`Found email for ${venue.name}: ${email}`);
+        return email;
+      }
+      
+      // Try contact page if available
+      const contactLinks = await page.$$eval('a', links => 
+        links.filter(link => 
+          /contact|booking|about/i.test(link.textContent) ||
+          /contact|booking|about/i.test(link.href)
+        ).map(link => link.href)
+      );
+      
+      for (const contactUrl of contactLinks.slice(0, 1)) {
+        try {
+          await page.goto(contactUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          const contactContent = await page.content();
+          const contactText = await page.evaluate(() => document.body.innerText || '');
+          
+          const contactEmail = extractEmail(contactContent + ' ' + contactText, contactUrl);
+          if (contactEmail) {
+            log(`Found email on contact page for ${venue.name}: ${contactEmail}`);
+            return contactEmail;
+          }
+        } catch (error) {
+          // Ignore errors from contact pages
+        }
+      }
+      
+      // Success - return null if no email found
+      return null;
+      
+    } catch (error) {
+      retries++;
+      log(`Error scraping ${venue.name} (attempt ${retries}): ${error.message}`);
+      
+      if (retries > maxRetries) {
+        return null;
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } finally {
+      if (page) {
+        try {
+          await page.close();
+        } catch (e) {
+          // Ignore close errors
+        }
+        page = null;
       }
     }
-    
-  } catch (error) {
-    log(`Error scraping ${venue.name}: ${error.message}`);
-  } finally {
-    if (page) await page.close();
   }
   
   return null;
@@ -164,30 +197,56 @@ async function scrapeMissingEmails() {
   try {
     browser = await puppeteer.launch({ 
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--ignore-certificate-errors',
+        '--ignore-ssl-errors',
+        '--ignore-certificate-errors-spki-list',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--disable-default-apps',
+        '--disable-features=VizDisplayCompositor'
+      ]
     });
     
     let updatedCount = 0;
+    const batchSize = 3; // Reduce batch size for better stability
     
-    // Process venues in batches of 5 to avoid overwhelming servers
-    for (let i = 0; i < venuesWithoutEmail.length; i += 5) {
-      const batch = venuesWithoutEmail.slice(i, i + 5);
-      log(`Processing batch ${Math.floor(i/5) + 1} of ${Math.ceil(venuesWithoutEmail.length/5)}`);
+    // Process venues in smaller batches to avoid overwhelming servers
+    for (let i = 0; i < venuesWithoutEmail.length; i += batchSize) {
+      const batch = venuesWithoutEmail.slice(i, i + batchSize);
+      const batchNum = Math.floor(i/batchSize) + 1;
+      const totalBatches = Math.ceil(venuesWithoutEmail.length/batchSize);
       
-      const promises = batch.map(venue => scrapeVenueEmail(venue, browser));
-      const emails = await Promise.allSettled(promises);
+      log(`Processing batch ${batchNum} of ${totalBatches} (venues ${i+1}-${Math.min(i+batchSize, venuesWithoutEmail.length)}/${venuesWithoutEmail.length})`);
       
-      // Update venues with found emails
-      emails.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value) {
-          batch[index].contact_email = result.value;
-          updatedCount++;
+      // Process venues one at a time to avoid browser crashes
+      for (const venue of batch) {
+        try {
+          const email = await scrapeVenueEmail(venue, browser);
+          if (email) {
+            venue.contact_email = email;
+            updatedCount++;
+            
+            // Save progress after each successful email found
+            if (updatedCount % 5 === 0) {
+              saveVenues(venues);
+              log(`Progress saved: ${updatedCount} emails found so far`);
+            }
+          }
+        } catch (error) {
+          log(`Failed to process ${venue.name}: ${error.message}`);
         }
-      });
+        
+        // Small delay between individual venue processing
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       
-      // Wait between batches to be respectful
-      if (i + 5 < venuesWithoutEmail.length) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      // Longer wait between batches to be respectful
+      if (i + batchSize < venuesWithoutEmail.length) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
     
