@@ -2,6 +2,7 @@
 import { loadVenues, getUniqueLocations, getUniqueGenres, getUniqueVenueTypes } from '../lib/venues';
 
 const venues = loadVenues();
+const totalVenues = venues.length;
 const locations = getUniqueLocations(venues);
 const genres = getUniqueGenres(venues);
 const venueTypes = getUniqueVenueTypes(venues);
@@ -188,6 +189,47 @@ const venueTypes = getUniqueVenueTypes(venues);
 				margin: 3rem 0;
 			}
 			
+			.pagination {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				margin: 2rem 0;
+				gap: 0.5rem;
+			}
+			
+			.pagination button {
+				padding: 0.5rem 1rem;
+				border: 2px solid #e5e7eb;
+				background: white;
+				color: #374151;
+				border-radius: 0.5rem;
+				cursor: pointer;
+				font-weight: 500;
+				transition: all 0.2s;
+			}
+			
+			.pagination button:hover:not(:disabled) {
+				border-color: #3b82f6;
+				color: #3b82f6;
+			}
+			
+			.pagination button.active {
+				background: #3b82f6;
+				border-color: #3b82f6;
+				color: white;
+			}
+			
+			.pagination button:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+			
+			.pagination .page-info {
+				margin: 0 1rem;
+				color: #6b7280;
+				font-weight: 500;
+			}
+			
 			@media (max-width: 768px) {
 				.filters-grid {
 					grid-template-columns: 1fr;
@@ -209,6 +251,14 @@ const venueTypes = getUniqueVenueTypes(venues);
 			<header class="header">
 				<h1>Music Venues Directory</h1>
 				<p>Discover amazing music venues across North Carolina</p>
+				<div style="margin-top: 1rem;">
+					<span style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;">
+						{totalVenues} Total Venues
+					</span>
+					<span id="filtered-count" style="background: #10b981; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; margin-left: 0.5rem;">
+						{totalVenues} Showing
+					</span>
+				</div>
 			</header>
 			
 			<div class="filters">
@@ -294,6 +344,14 @@ const venueTypes = getUniqueVenueTypes(venues);
 				))}
 			</div>
 			
+			<div class="pagination" id="pagination" style="display: none;">
+				<button id="prevBtn">← Previous</button>
+				<div class="page-info">
+					<span id="pageInfo">Page 1 of 1</span>
+				</div>
+				<button id="nextBtn">Next →</button>
+			</div>
+			
 			<div id="no-results" class="no-results" style="display: none;">
 				No venues found matching your search criteria.
 			</div>
@@ -307,7 +365,17 @@ const venueTypes = getUniqueVenueTypes(venues);
 			const capacitySelect = document.getElementById('capacity');
 			const venuesContainer = document.getElementById('venues-container');
 			const noResults = document.getElementById('no-results');
-			const venueCards = document.querySelectorAll('.venue-card');
+			const filteredCount = document.getElementById('filtered-count');
+			const pagination = document.getElementById('pagination');
+			const prevBtn = document.getElementById('prevBtn');
+			const nextBtn = document.getElementById('nextBtn');
+			const pageInfo = document.getElementById('pageInfo');
+			const venueCards = Array.from(document.querySelectorAll('.venue-card'));
+			
+			// Pagination settings
+			const VENUES_PER_PAGE = 12;
+			let currentPage = 1;
+			let filteredVenues = venueCards;
 			
 			function filterVenues() {
 				const searchTerm = searchInput.value.toLowerCase();
@@ -316,9 +384,8 @@ const venueTypes = getUniqueVenueTypes(venues);
 				const selectedType = typeSelect.value;
 				const selectedCapacity = capacitySelect.value;
 				
-				let visibleCount = 0;
-				
-				venueCards.forEach(card => {
+				// Filter venues based on criteria
+				filteredVenues = venueCards.filter(card => {
 					const name = card.dataset.name.toLowerCase();
 					const location = card.dataset.location;
 					const genres = card.dataset.genres ? card.dataset.genres.toLowerCase() : '';
@@ -340,20 +407,70 @@ const venueTypes = getUniqueVenueTypes(venues);
 						matchesCapacity = capacity >= min && capacity <= max;
 					}
 					
-					const shouldShow = matchesSearch && matchesLocation && matchesGenre && matchesType && matchesCapacity;
-					
-					card.style.display = shouldShow ? 'block' : 'none';
-					if (shouldShow) visibleCount++;
+					return matchesSearch && matchesLocation && matchesGenre && matchesType && matchesCapacity;
 				});
 				
-				noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+				// Reset to first page when filters change
+				currentPage = 1;
+				updateDisplay();
 			}
 			
+			function updateDisplay() {
+				const totalPages = Math.ceil(filteredVenues.length / VENUES_PER_PAGE);
+				const startIndex = (currentPage - 1) * VENUES_PER_PAGE;
+				const endIndex = startIndex + VENUES_PER_PAGE;
+				
+				// Hide all venue cards first
+				venueCards.forEach(card => card.style.display = 'none');
+				
+				// Show venues for current page
+				const venuesToShow = filteredVenues.slice(startIndex, endIndex);
+				venuesToShow.forEach(card => card.style.display = 'block');
+				
+				// Update counts
+				filteredCount.textContent = `${filteredVenues.length} Showing`;
+				
+				// Update pagination
+				if (filteredVenues.length > VENUES_PER_PAGE) {
+					pagination.style.display = 'flex';
+					prevBtn.disabled = currentPage === 1;
+					nextBtn.disabled = currentPage === totalPages;
+					pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${filteredVenues.length} venues)`;
+				} else {
+					pagination.style.display = 'none';
+				}
+				
+				// Show no results message
+				noResults.style.display = filteredVenues.length === 0 ? 'block' : 'none';
+			}
+			
+			function goToPage(page) {
+				const totalPages = Math.ceil(filteredVenues.length / VENUES_PER_PAGE);
+				if (page >= 1 && page <= totalPages) {
+					currentPage = page;
+					updateDisplay();
+					
+					// Scroll to top of venues
+					document.querySelector('.filters').scrollIntoView({ 
+						behavior: 'smooth',
+						block: 'start'
+					});
+				}
+			}
+			
+			// Event listeners for filters
 			searchInput.addEventListener('input', filterVenues);
 			locationSelect.addEventListener('change', filterVenues);
 			genreSelect.addEventListener('change', filterVenues);
 			typeSelect.addEventListener('change', filterVenues);
 			capacitySelect.addEventListener('change', filterVenues);
+			
+			// Event listeners for pagination
+			prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
+			nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+			
+			// Initialize display on page load
+			updateDisplay();
 		</script>
 	</body>
 </html>
