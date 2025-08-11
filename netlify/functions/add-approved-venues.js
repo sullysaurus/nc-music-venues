@@ -3,8 +3,8 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 
-const DISCOVERED_VENUES_PATH = path.join(process.cwd(), 'src/data/discovered_venues.csv');
-const MAIN_VENUES_PATH = path.join(process.cwd(), 'src/data/venues_master.csv');
+const DISCOVERED_VENUES_PATH = path.join('/tmp', 'discovered_venues.csv');
+const MAIN_VENUES_PATH = path.join('/tmp', 'venues_master.csv');
 
 // Load discovered venues
 const loadDiscoveredVenues = () => {
@@ -61,8 +61,8 @@ exports.handler = async (event, context) => {
     // Load existing venues
     const existingVenues = loadMainVenues();
     
-    // Create backup
-    const backupPath = path.join(process.cwd(), 'src/data/venues_backup_before_additions.csv');
+    // Create backup in /tmp
+    const backupPath = path.join('/tmp', 'venues_backup_before_additions.csv');
     if (fs.existsSync(MAIN_VENUES_PATH)) {
       fs.copyFileSync(MAIN_VENUES_PATH, backupPath);
     }
@@ -112,11 +112,7 @@ exports.handler = async (event, context) => {
       columns: columns
     });
     
-    // Ensure directory exists
-    const dir = path.dirname(MAIN_VENUES_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    // /tmp directory always exists in Netlify functions
     
     fs.writeFileSync(MAIN_VENUES_PATH, csvContent);
     

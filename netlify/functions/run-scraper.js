@@ -4,8 +4,8 @@ const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 const puppeteer = require('puppeteer');
 
-const CSV_PATH = path.join(process.cwd(), 'src/data/venues_master.csv');
-const BACKUP_PATH = path.join(process.cwd(), 'src/data/venues_backup.csv');
+const CSV_PATH = path.join('/tmp', 'venues_master.csv');
+const BACKUP_PATH = path.join('/tmp', 'venues_backup.csv');
 
 // Load venues from CSV
 const loadVenues = () => {

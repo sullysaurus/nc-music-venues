@@ -377,11 +377,14 @@ const recentDiscoveries = Object.entries(venuesByDate)
               body: JSON.stringify({ city, maxResults })
             });
             
-            const result = await response.text();
-            alert(result);
+            const result = await response.json();
             
-            // Refresh page to show new discoveries
-            setTimeout(() => location.reload(), 2000);
+            // Display discovered venues
+            if (result.venues && result.venues.length > 0) {
+              displayDiscoveredVenues(result.venues);
+            } else {
+              alert(result.message || 'No venues found');
+            }
             
           } catch (error) {
             alert('Error discovering venues: ' + error.message);
@@ -389,6 +392,88 @@ const recentDiscoveries = Object.entries(venuesByDate)
             loading.style.display = 'none';
           }
         });
+        
+        // Function to display discovered venues
+        function displayDiscoveredVenues(venues) {
+          const resultsHtml = `
+            <div style="margin-top: 2rem; background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <h3>Discovered Venues (${venues.length})</h3>
+              <p style="color: #6b7280; margin-bottom: 1rem;">These venues were found but cannot be saved in serverless mode. Copy the data below to manually add them.</p>
+              <div style="max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #f9fafb;">
+                      <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Name</th>
+                      <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Type</th>
+                      <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Address</th>
+                      <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Website</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${venues.map(venue => `
+                      <tr>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">${venue.name}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">${venue.venue_type}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">${venue.address || 'N/A'}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">
+                          <a href="${venue.website}" target="_blank" style="color: #3b82f6;">Visit</a>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+              <div style="margin-top: 1rem;">
+                <button onclick="copyVenuesData(${JSON.stringify(venues).replace(/"/g, '&quot;')})" 
+                        style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                  Copy as CSV
+                </button>
+              </div>
+            </div>
+          `;
+          
+          // Find a place to insert the results (after the discovery form)
+          const form = document.querySelector('.discovery-form');
+          const existingResults = document.querySelector('.discovery-results');
+          
+          if (existingResults) {
+            existingResults.innerHTML = resultsHtml;
+          } else {
+            const resultsDiv = document.createElement('div');
+            resultsDiv.className = 'discovery-results';
+            resultsDiv.innerHTML = resultsHtml;
+            form.parentNode.insertBefore(resultsDiv, form.nextSibling);
+          }
+        }
+        
+        // Function to copy venues data as CSV
+        window.copyVenuesData = function(venues) {
+          const csvHeaders = ['name', 'location', 'address', 'venue_type', 'website'];
+          const csvRows = [csvHeaders.join(',')];
+          
+          venues.forEach(venue => {
+            const row = csvHeaders.map(header => {
+              const value = venue[header] || '';
+              // Escape quotes and wrap in quotes if contains comma
+              return value.includes(',') ? `"${value.replace(/"/g, '""')}"` : value;
+            });
+            csvRows.push(row.join(','));
+          });
+          
+          const csvContent = csvRows.join('\\n');
+          navigator.clipboard.writeText(csvContent).then(() => {
+            alert('Venues data copied to clipboard as CSV!');
+          }).catch(() => {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = csvContent;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('Venues data copied to clipboard as CSV!');
+          });
+        };
         
         // Define other functions in global scope
         window.updateVenueStatus = async function(name, location, status) {

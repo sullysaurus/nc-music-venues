@@ -4,57 +4,9 @@ const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 const puppeteer = require('puppeteer');
 
-const DISCOVERED_VENUES_PATH = path.join(process.cwd(), 'src/data/discovered_venues.csv');
-
-// Ensure directories exist
-const ensureDataDir = () => {
-  const dir = path.dirname(DISCOVERED_VENUES_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
-
-// Initialize discovered venues CSV if it doesn't exist
-const initializeDiscoveredVenues = () => {
-  ensureDataDir();
-  if (!fs.existsSync(DISCOVERED_VENUES_PATH)) {
-    const headers = [
-      'name', 'location', 'address', 'venue_type', 'website', 
-      'discovered_from', 'discovery_date', 'status'
-    ];
-    const csvContent = stringify([headers]);
-    fs.writeFileSync(DISCOVERED_VENUES_PATH, csvContent);
-  }
-};
-
-// Load discovered venues
-const loadDiscoveredVenues = () => {
-  try {
-    if (!fs.existsSync(DISCOVERED_VENUES_PATH)) return [];
-    const csvContent = fs.readFileSync(DISCOVERED_VENUES_PATH, 'utf8');
-    if (!csvContent.trim()) return [];
-    return parse(csvContent, { columns: true, skip_empty_lines: true });
-  } catch (error) {
-    console.error('Error loading discovered venues:', error);
-    return [];
-  }
-};
-
-// Save discovered venues
-const saveDiscoveredVenues = (venues) => {
-  try {
-    const headers = [
-      'name', 'location', 'address', 'venue_type', 'website', 
-      'discovered_from', 'discovery_date', 'status'
-    ];
-    const csvContent = stringify(venues, { header: true, columns: headers });
-    fs.writeFileSync(DISCOVERED_VENUES_PATH, csvContent);
-    console.log(`Saved ${venues.length} discovered venues`);
-  } catch (error) {
-    console.error('Error saving discovered venues:', error);
-    throw error;
-  }
-};
+// For serverless, we can't persist files between function calls
+// This function will discover venues and return them without saving
+// The frontend will need to handle displaying and managing the results
 
 // Search patterns for different types of venues
 const venueSearchTerms = [
@@ -75,8 +27,8 @@ const venueSearchTerms = [
 const discoverVenuesInCity = async (city, maxResults = 25) => {
   console.log(`Starting venue discovery for ${city}...`);
   
-  const discoveredVenues = loadDiscoveredVenues();
-  const existingVenues = new Set(discoveredVenues.map(v => v.name.toLowerCase() + v.location.toLowerCase()));
+  // For serverless, we just discover new venues without checking existing ones
+  const existingVenues = new Set(); // Empty set for now
   
   let browser;
   const newVenues = [];
@@ -209,13 +161,7 @@ const discoverVenuesInCity = async (city, maxResults = 25) => {
     if (browser) await browser.close();
   }
   
-  if (newVenues.length > 0) {
-    const allVenues = [...discoveredVenues, ...newVenues];
-    saveDiscoveredVenues(allVenues);
-    console.log(`Discovery complete! Found ${newVenues.length} new venues in ${city}`);
-  } else {
-    console.log(`No new venues found in ${city}`);
-  }
+  console.log(`Discovery complete! Found ${newVenues.length} venues in ${city}`);
   
   return newVenues;
 };
@@ -241,9 +187,6 @@ exports.handler = async (event, context) => {
       };
     }
     
-    // Initialize data structures
-    initializeDiscoveredVenues();
-    
     // Run discovery
     const newVenues = await discoverVenuesInCity(city, Math.min(maxResults, 30)); // Limit for timeout
     
@@ -253,9 +196,9 @@ exports.handler = async (event, context) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
-        message: `Venue discovery completed for ${city}. Found ${newVenues.length} new venues.`,
+        message: `Venue discovery completed for ${city}. Found ${newVenues.length} venues.`,
         venuesFound: newVenues.length,
-        venues: newVenues.slice(0, 5) // Return first 5 for preview
+        venues: newVenues // Return all discovered venues
       })
     };
     

@@ -3,7 +3,7 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 const { stringify } = require('csv-stringify/sync');
 
-const DISCOVERED_VENUES_PATH = path.join(process.cwd(), 'src/data/discovered_venues.csv');
+const DISCOVERED_VENUES_PATH = path.join('/tmp', 'discovered_venues.csv');
 
 // Load discovered venues
 const loadDiscoveredVenues = () => {
@@ -31,11 +31,7 @@ const saveDiscoveredVenues = (venues) => {
       columns: headers
     });
     
-    // Ensure directory exists
-    const dir = path.dirname(DISCOVERED_VENUES_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    // /tmp directory always exists in Netlify functions
     
     fs.writeFileSync(DISCOVERED_VENUES_PATH, csvContent);
     console.log(`Updated venue statuses for ${venues.length} venues`);
