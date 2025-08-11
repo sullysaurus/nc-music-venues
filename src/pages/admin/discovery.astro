@@ -279,7 +279,7 @@ const recentDiscoveries = Object.entries(venuesByDate)
             <label for="maxResults">Max Results</label>
             <input type="number" id="maxResults" value="25" min="5" max="100" />
           </div>
-          <button class="btn btn-primary" onclick="discoverVenues()">
+          <button class="btn btn-primary" id="discoverBtn">
             Discover Venues
           </button>
         </div>
@@ -355,78 +355,83 @@ const recentDiscoveries = Object.entries(venuesByDate)
     </div>
     
     <script>
-      async function discoverVenues() {
-        const city = document.getElementById('city').value.trim();
-        const maxResults = parseInt(document.getElementById('maxResults').value);
-        const loading = document.getElementById('discoveryLoading');
+      document.addEventListener('DOMContentLoaded', function() {
+        const discoverBtn = document.getElementById('discoverBtn');
         
-        if (!city) {
-          alert('Please enter a city name');
-          return;
-        }
-        
-        loading.style.display = 'block';
-        
-        try {
-          const response = await fetch('/api/discover-venues', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ city, maxResults })
-          });
+        discoverBtn.addEventListener('click', async function() {
+          const city = document.getElementById('city').value.trim();
+          const maxResults = parseInt(document.getElementById('maxResults').value);
+          const loading = document.getElementById('discoveryLoading');
           
-          const result = await response.text();
-          alert(result);
-          
-          // Refresh page to show new discoveries
-          setTimeout(() => location.reload(), 2000);
-          
-        } catch (error) {
-          alert('Error discovering venues: ' + error.message);
-        } finally {
-          loading.style.display = 'none';
-        }
-      }
-      
-      async function updateVenueStatus(name, location, status) {
-        try {
-          const response = await fetch('/api/update-venue-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, location, status })
-          });
-          
-          if (response.ok) {
-            // Refresh page to update the list
-            location.reload();
-          } else {
-            alert('Error updating venue status');
+          if (!city) {
+            alert('Please enter a city name');
+            return;
           }
-        } catch (error) {
-          alert('Error updating venue status: ' + error.message);
-        }
-      }
-      
-      async function addApprovedVenues() {
-        if (!confirm('Add all approved venues to the main directory? This cannot be undone easily.')) {
-          return;
-        }
-        
-        try {
-          const response = await fetch('/api/add-approved-venues', {
-            method: 'POST'
-          });
           
-          const result = await response.text();
-          alert(result);
+          loading.style.display = 'block';
           
-          if (response.ok) {
-            // Refresh page to update counts
-            setTimeout(() => location.reload(), 1000);
+          try {
+            const response = await fetch('/api/discover-venues', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ city, maxResults })
+            });
+            
+            const result = await response.text();
+            alert(result);
+            
+            // Refresh page to show new discoveries
+            setTimeout(() => location.reload(), 2000);
+            
+          } catch (error) {
+            alert('Error discovering venues: ' + error.message);
+          } finally {
+            loading.style.display = 'none';
           }
-        } catch (error) {
-          alert('Error adding approved venues: ' + error.message);
-        }
-      }
+        });
+        
+        // Define other functions in global scope
+        window.updateVenueStatus = async function(name, location, status) {
+          try {
+            const response = await fetch('/api/update-venue-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, location, status })
+            });
+            
+            if (response.ok) {
+              // Refresh page to update the list
+              location.reload();
+            } else {
+              alert('Error updating venue status');
+            }
+          } catch (error) {
+            alert('Error updating venue status: ' + error.message);
+          }
+        };
+        
+        window.addApprovedVenues = async function() {
+          if (!confirm('Add all approved venues to the main directory? This cannot be undone easily.')) {
+            return;
+          }
+          
+          try {
+            const response = await fetch('/api/add-approved-venues', {
+              method: 'POST'
+            });
+            
+            const result = await response.text();
+            alert(result);
+            
+            if (response.ok) {
+              // Refresh page to update counts
+              setTimeout(() => location.reload(), 1000);
+            }
+          } catch (error) {
+            alert('Error adding approved venues: ' + error.message);
+          }
+        };
+      });
     </script>
   </body>
 </html>
