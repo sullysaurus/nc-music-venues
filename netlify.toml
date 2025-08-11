@@ -16,3 +16,6 @@
 
 [functions."add-approved-venues"]
   timeout = 60
+
+[functions."upload-venues"]
+  timeout = 60

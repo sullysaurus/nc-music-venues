@@ -259,6 +259,23 @@ try {
         </div>
       </div>
       
+      <div class="log-section">
+        <h2>Upload Venues</h2>
+        <p style="margin-bottom: 1rem; color: #6b7280;">Upload a CSV file to add new venues to the directory.</p>
+        
+        <div style="margin-bottom: 1rem;">
+          <input type="file" id="csvFileInput" accept=".csv" style="margin-right: 1rem;" />
+          <button class="btn btn-primary" id="uploadBtn">Upload CSV</button>
+        </div>
+        
+        <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+          <strong>Required CSV columns:</strong> name, location, address, venue_type, website<br/>
+          <strong>Optional columns:</strong> capacity, contact_email, contact_phone, contact_name, typical_genres
+        </div>
+        
+        <div id="uploadStatus" style="display: none; margin-top: 1rem;"></div>
+      </div>
+      
       <div class="actions">
         <button class="btn btn-primary" id="scraperBtn">Run Complete Scraper</button>
         <a href="/admin/discovery" class="btn btn-secondary">Venue Discovery</a>
@@ -274,6 +291,9 @@ try {
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const scraperBtn = document.getElementById('scraperBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const csvFileInput = document.getElementById('csvFileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
         
         scraperBtn.addEventListener('click', async function() {
           const btn = this;
@@ -294,6 +314,108 @@ try {
             setTimeout(() => location.reload(), 2000);
           }
         });
+        
+        uploadBtn.addEventListener('click', async function() {
+          const file = csvFileInput.files[0];
+          
+          if (!file) {
+            alert('Please select a CSV file to upload');
+            return;
+          }
+          
+          if (!file.name.toLowerCase().endsWith('.csv')) {
+            alert('Please select a CSV file');
+            return;
+          }
+          
+          const btn = this;
+          btn.disabled = true;
+          btn.textContent = 'Uploading...';
+          uploadStatus.style.display = 'none';
+          
+          try {
+            // Read file content
+            const fileContent = await readFileAsText(file);
+            
+            // Send to Netlify function
+            const response = await fetch('/.netlify/functions/upload-venues', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ csvContent: fileContent })
+            });
+            
+            const result = await response.json();
+            
+            // Display result
+            let statusHtml = `
+              <div style="padding: 1rem; border-radius: 0.5rem; ${response.ok ? 'background: #d1fae5; color: #065f46;' : 'background: #fee2e2; color: #991b1b;'}">
+                <strong>${response.ok ? 'Success:' : 'Error:'}</strong> ${result.message}
+                ${result.venuesAdded ? `<br/>Found ${result.venuesAdded} new venues to add.` : ''}
+                ${result.duplicates ? `<br/>${result.duplicates} duplicates were skipped.` : ''}
+                ${result.totalProcessed ? `<br/>Total processed: ${result.totalProcessed} venues` : ''}
+              </div>
+            `;
+            
+            // If there's CSV data to copy (serverless mode)
+            if (result.csvData && result.venuesAdded > 0) {
+              statusHtml += `
+                <div style="margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem;">
+                  <strong>Manual Update Required:</strong><br/>
+                  Since this is a serverless environment, the venues cannot be automatically added to your file.<br/>
+                  <button onclick="copyNewVenuesData('${result.csvData.replace(/'/g, "\\'")}')" 
+                          style="margin-top: 0.5rem; background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                    Copy New Venues CSV Data
+                  </button>
+                </div>
+              `;
+            }
+            
+            uploadStatus.innerHTML = statusHtml;
+            uploadStatus.style.display = 'block';
+            
+            if (response.ok && result.venuesAdded > 0) {
+              // Refresh page after success to show updated stats
+              setTimeout(() => location.reload(), 3000);
+            }
+            
+          } catch (error) {
+            uploadStatus.innerHTML = `
+              <div style="padding: 1rem; border-radius: 0.5rem; background: #fee2e2; color: #991b1b;">
+                <strong>Error:</strong> ${error.message}
+              </div>
+            `;
+            uploadStatus.style.display = 'block';
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Upload CSV';
+          }
+        });
+        
+        // Helper function to read file as text
+        function readFileAsText(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = event => resolve(event.target.result);
+            reader.onerror = error => reject(error);
+            reader.readAsText(file);
+          });
+        }
+        
+        // Global function to copy new venues CSV data
+        window.copyNewVenuesData = function(csvData) {
+          navigator.clipboard.writeText(csvData).then(() => {
+            alert('New venues CSV data copied to clipboard! You can now paste this into your venues file.');
+          }).catch(() => {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = csvData;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('New venues CSV data copied to clipboard! You can now paste this into your venues file.');
+          });
+        };
         
         // Auto-refresh every 30 seconds
         setTimeout(() => location.reload(), 30000);
