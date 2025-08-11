@@ -61,7 +61,7 @@ const venueTypes = getUniqueVenueTypes(venues);
 			
 			.filters-grid {
 				display: grid;
-				grid-template-columns: 2fr 1fr 1fr 1fr;
+				grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
 				gap: 1rem;
 				align-items: end;
 			}
@@ -248,12 +248,22 @@ const venueTypes = getUniqueVenueTypes(venues);
 							))}
 						</select>
 					</div>
+					<div class="filter-group">
+						<label for="capacity">Capacity</label>
+						<select id="capacity">
+							<option value="">All capacities</option>
+							<option value="0-100">Small (0-100)</option>
+							<option value="101-500">Medium (101-500)</option>
+							<option value="501-2000">Large (501-2000)</option>
+							<option value="2001-99999">Huge (2000+)</option>
+						</select>
+					</div>
 				</div>
 			</div>
 			
 			<div class="venues-grid" id="venues-container">
 				{venues.map(venue => (
-					<div class="venue-card" data-name={venue.name} data-location={venue.location} data-genres={venue.typical_genres} data-type={venue.venue_type}>
+					<div class="venue-card" data-name={venue.name} data-location={venue.location} data-genres={venue.typical_genres} data-type={venue.venue_type} data-capacity={venue.capacity || ''}>
 						<h3>{venue.name}</h3>
 						<div class="venue-location">{venue.location}</div>
 						{venue.address && <div class="venue-address">{venue.address}</div>}
@@ -294,6 +304,7 @@ const venueTypes = getUniqueVenueTypes(venues);
 			const locationSelect = document.getElementById('location');
 			const genreSelect = document.getElementById('genre');
 			const typeSelect = document.getElementById('type');
+			const capacitySelect = document.getElementById('capacity');
 			const venuesContainer = document.getElementById('venues-container');
 			const noResults = document.getElementById('no-results');
 			const venueCards = document.querySelectorAll('.venue-card');
@@ -303,6 +314,7 @@ const venueTypes = getUniqueVenueTypes(venues);
 				const selectedLocation = locationSelect.value;
 				const selectedGenre = genreSelect.value;
 				const selectedType = typeSelect.value;
+				const selectedCapacity = capacitySelect.value;
 				
 				let visibleCount = 0;
 				
@@ -311,6 +323,7 @@ const venueTypes = getUniqueVenueTypes(venues);
 					const location = card.dataset.location;
 					const genres = card.dataset.genres ? card.dataset.genres.toLowerCase() : '';
 					const type = card.dataset.type;
+					const capacity = parseInt(card.dataset.capacity) || 0;
 					
 					const matchesSearch = !searchTerm || 
 						name.includes(searchTerm) || 
@@ -321,7 +334,13 @@ const venueTypes = getUniqueVenueTypes(venues);
 					const matchesGenre = !selectedGenre || genres.includes(selectedGenre.toLowerCase());
 					const matchesType = !selectedType || type === selectedType;
 					
-					const shouldShow = matchesSearch && matchesLocation && matchesGenre && matchesType;
+					let matchesCapacity = true;
+					if (selectedCapacity) {
+						const [min, max] = selectedCapacity.split('-').map(n => parseInt(n));
+						matchesCapacity = capacity >= min && capacity <= max;
+					}
+					
+					const shouldShow = matchesSearch && matchesLocation && matchesGenre && matchesType && matchesCapacity;
 					
 					card.style.display = shouldShow ? 'block' : 'none';
 					if (shouldShow) visibleCount++;
@@ -334,6 +353,7 @@ const venueTypes = getUniqueVenueTypes(venues);
 			locationSelect.addEventListener('change', filterVenues);
 			genreSelect.addEventListener('change', filterVenues);
 			typeSelect.addEventListener('change', filterVenues);
+			capacitySelect.addEventListener('change', filterVenues);
 		</script>
 	</body>
 </html>
