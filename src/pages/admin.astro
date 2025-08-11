@@ -260,7 +260,7 @@ try {
       </div>
       
       <div class="actions">
-        <button class="btn btn-primary" onclick="runScraper(event)">Run Complete Scraper</button>
+        <button class="btn btn-primary" id="scraperBtn">Run Complete Scraper</button>
         <a href="/" class="btn btn-secondary">Back to Directory</a>
       </div>
       
@@ -271,28 +271,32 @@ try {
     </div>
     
     <script>
-      async function runScraper(event) {
-        const btn = event.target;
-        btn.disabled = true;
-        btn.textContent = 'Running...';
+      document.addEventListener('DOMContentLoaded', function() {
+        const scraperBtn = document.getElementById('scraperBtn');
         
-        try {
-          const response = await fetch('/api/run-scraper', { method: 'POST' });
-          const result = await response.text();
-          alert(result || 'Scraper started successfully');
-        } catch (error) {
-          alert('Error starting scraper: ' + error.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Run Complete Scraper';
+        scraperBtn.addEventListener('click', async function() {
+          const btn = this;
+          btn.disabled = true;
+          btn.textContent = 'Running...';
           
-          // Refresh page after 2 seconds
-          setTimeout(() => location.reload(), 2000);
-        }
-      }
-      
-      // Auto-refresh every 30 seconds
-      setTimeout(() => location.reload(), 30000);
+          try {
+            const response = await fetch('/api/run-scraper', { method: 'POST' });
+            const result = await response.text();
+            alert(result || 'Scraper started successfully');
+          } catch (error) {
+            alert('Error starting scraper: ' + error.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Run Complete Scraper';
+            
+            // Refresh page after 2 seconds
+            setTimeout(() => location.reload(), 2000);
+          }
+        });
+        
+        // Auto-refresh every 30 seconds
+        setTimeout(() => location.reload(), 30000);
+      });
     </script>
   </body>
 </html>
