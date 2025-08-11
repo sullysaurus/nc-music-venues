@@ -1,7 +1,7 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
+const fs = require('fs-extra');
+const path = require('path');
+const { parse } = require('csv-parse/sync');
+const { stringify } = require('csv-stringify/sync');
 
 const DISCOVERED_VENUES_PATH = path.join(process.cwd(), 'src/data/discovered_venues.csv');
 
@@ -67,7 +67,7 @@ const updateVenueStatus = (venueName, location, status) => {
   }
 };
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,

@@ -1,8 +1,8 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
-import puppeteer from 'puppeteer';
+const fs = require('fs-extra');
+const path = require('path');
+const { parse } = require('csv-parse/sync');
+const { stringify } = require('csv-stringify/sync');
+const puppeteer = require('puppeteer');
 
 const CSV_PATH = path.join(process.cwd(), 'src/data/venues_master.csv');
 const BACKUP_PATH = path.join(process.cwd(), 'src/data/venues_backup.csv');
@@ -165,7 +165,7 @@ const quickScrapeVenue = async (venue, browser) => {
   }
 };
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
   // Set longer timeout for this function
   context.callbackWaitsForEmptyEventLoop = false;
   

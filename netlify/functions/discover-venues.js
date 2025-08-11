@@ -1,8 +1,8 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
-import puppeteer from 'puppeteer';
+const fs = require('fs-extra');
+const path = require('path');
+const { parse } = require('csv-parse/sync');
+const { stringify } = require('csv-stringify/sync');
+const puppeteer = require('puppeteer');
 
 const DISCOVERED_VENUES_PATH = path.join(process.cwd(), 'src/data/discovered_venues.csv');
 
@@ -220,7 +220,7 @@ const discoverVenuesInCity = async (city, maxResults = 25) => {
   return newVenues;
 };
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
   // Set longer timeout for this function
   context.callbackWaitsForEmptyEventLoop = false;
   
